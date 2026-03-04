@@ -1,0 +1,19 @@
+
+
+header {
+    position: fixed;left: 0;
+    top: 0;
+    width: 100%;
+    z-index: 1000;
+    transition: all 0.3s ease;
+}
+
+#upperfather{
+    position: relative;
+    background: rgba(255, 212, 242, 0.719);
+    width: 100%;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.63);
+    backdrop-filter: blur(20px);
+    border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+    margin: 0;
+}

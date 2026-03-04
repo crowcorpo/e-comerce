@@ -1,0 +1,438 @@
+
+
+
+.bg{
+    position: fixed;
+    top: 0; left: 0;
+    width: 100%;
+    height: 100vh;
+    z-index: 0;
+}
+.bg img{
+    width: 105%;
+    height: 100%;
+    object-fit: cover;
+    filter: blur(5px); 
+}
+
+.page-content{
+    position: relative;
+    z-index: 10;
+}
+
+#link7awi{
+    position: fixed;top: calc(4vh);
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 100;
+}
+
+#home{
+    height: 50px;
+    background-color: black;
+    border-radius: 50px;
+    color: white;
+    display: flex;
+    align-items: center;
+    font-size: 1.1em;
+    font-weight: 700;
+    justify-content: center;
+    width: 100px;
+    text-decoration: none;
+    border: 2px solid white;
+    box-shadow: 0px 0px 5px rgb(170, 125, 125);
+}
+
+#img7awi{
+    margin-top: 15vh;
+    height: 250px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+#img7awi img{
+    border-radius: 10px;
+    margin: 10px;
+    height: 100%;
+    width: 70%;
+    box-shadow: 5px 5px 9px black;
+    border: 1px solid white;
+}
+
+.products{
+    font-size: 1.5em;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-direction: column;
+}
+
+#h2{
+    font-weight: bolder;
+    color: rgba(255, 0, 0, 0.932);
+    border-radius: 5px;
+}
+.products p{
+    font-size: 1.4em;
+    font-weight: bolder;
+    margin-top: -20px;
+    background-color: rgba(0, 0, 0, 0.226);
+    color: rgb(255, 255, 255);
+    box-shadow: 0px 0px 5px rgb(170, 125, 125);
+    padding: 0 5px;
+    border: 1px solid white;
+    border-radius: 10px;
+}
+
+.fathersize{
+    margin-top: -3vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.size{
+    display: flex;
+    gap: 10px;
+}
+
+.size h1{
+    font-size: 1.4em;
+    font-weight: bolder;
+    font-family: Cambria, Cochin, Georgia, Times, 'Times New Roman', serif;
+    padding: 10px;
+    border: 1px solid rgba(0, 0, 0, 0.767);
+    width: 10vw;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 5px;
+    box-shadow: 0px 0px 5px rgb(170, 125, 125);
+    background-color: rgba(255, 255, 255, 0.856);
+}
+
+.bgcolor{
+    background-color: rgb(0, 0, 0) !important;
+    border: 2px solid rgb(0, 0, 0);
+    transition: 0.3s ease;
+    color: white !important;
+}
+
+#button7awi{
+    margin-top: 2vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+#buy{
+    height: 50px;
+    background-color: rgba(0, 0, 0, 0.863);
+    border-radius: 50px;
+    color: white;
+    display: flex;
+    align-items: center;
+    font-size: 1.1em;
+    font-weight: 700;
+    justify-content: center;
+    width: calc(100% - 40vw);
+    border: 2px solid rgba(255, 255, 255, 0.534);
+    box-shadow: 0px 0px 5px rgb(170, 125, 125);
+    font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+}
+
+#buy:active{
+    background-color: rgba(255, 255, 255, 0.705);
+    transition: 0.3s ease-in-out;
+}
+
+.thebigfather{
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+#paydiv{
+    position: fixed;
+    top: calc(14vh);
+    bottom: 0;
+    height: 455px;
+    width: calc(100% - 10vw);
+    background-color: rgba(0, 0, 0, 0.904);
+    z-index: 999;
+    backdrop-filter: blur(8px);
+    border-radius: 10px;
+    box-shadow: 0px 0px 5px rgb(178, 185, 108);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: flex-start; 
+    gap: 15px;
+    padding-top: 20px; 
+}
+
+#info{
+    color: white;
+    font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+    font-size: 1.7em;
+    box-shadow: 0px 0px 5px rgb(227, 182, 238);
+    padding: 5px;
+    border-radius: 0 20px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+
+}
+
+#paydiv input{
+    height: 40px;
+    width: calc(100% - 15vw);
+    background-color: rgba(255, 255, 255, 0.274);
+    backdrop-filter: blur(5px);
+    border: 1px solid snow;
+    border-radius: 20px;
+    box-shadow: 0px 0px 5px rgb(170, 125, 125);
+    padding: 0 10px;
+    font-size: 1em;
+    color: rgba(255, 255, 255, 0.959);
+    transform: translateY(-10px);
+    outline-color: goldenrod;
+}
+
+#contiti7awi{
+    margin-top: 10px;
+    height: 60px;
+    width: calc(100% - 40vw);
+    border: 2px solid white;
+    color: rgb(255, 255, 255);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    border-radius: 5px;
+    box-shadow: 0px 0px 5px rgb(170, 125, 125);
+}
+
+#contiti7awi p{
+    font-size: 1.3em;
+    padding: 0 20px;
+    font-family: 'Trebuchet MS', 'Lucida Sans Unicode', 'Lucida Grande', 'Lucida Sans', Arial, sans-serif;
+    cursor: pointer;
+    user-select: none;
+}
+
+#send7awi{
+    width: calc(100% - 40vw);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    margin-top: 10px; 
+    position: static; 
+}
+
+#send{
+    height: 50px;
+    width: 100%;
+    cursor: pointer;
+    user-select: none;
+    background-color: rgba(0, 0, 0, 0.514);
+    color: white;
+    border: 1px solid rgb(255, 0, 0);
+    box-shadow: 0px 0px 5px rgb(170, 125, 125);
+    border-radius: 20px;
+    font-size: 1em;
+    font-weight: 600;
+    font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+}
+
+#send:active{
+    background-color: rgba(255, 255, 255, 0.336);
+    transition: 0.2s ease-in-out;
+}
+
+
+.slideup{
+    transform: translateX(0vh);
+    transition: 0.6s ease-in-out;
+}
+
+.slidedown{
+    transform: translateX(120%);
+    transition: 0.6s ease-in-out;
+}
+
+.changeborder{
+    border: 1px solid red !important;
+}
+
+#sented{
+    opacity: 0; 
+    transition: opacity 0.9s ease-in-out; 
+    font-size: 1.2em;
+    color: white;
+    white-space: nowrap; 
+    text-align: center; 
+    user-select: none;
+}
+
+#sented.show{
+    opacity: 1; 
+}
+
+@media (min-width: 1020px){
+
+    .bg img{
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    filter: blur(8px); 
+    
+}
+
+    #img7awi img{
+    margin-top: -5vh;
+    width: 20%;
+    height: 200px;
+    box-shadow: 7px 7px 10px black;
+}
+    .products{
+    margin-top: calc(-8vh);
+    font-size: 1.5em;
+}
+
+    .size h1{
+    padding: 10px;
+    border: 1px solid rgba(0, 0, 0, 0.767);
+    width: 5vw;
+    box-shadow: 0px 0px 7px rgb(170, 125, 125);
+    background-color: rgba(255, 255, 255, 0.699);
+    cursor: pointer;
+}
+    #buy{
+    height: 50px;
+    background-color: rgba(0, 0, 0, 0.829);
+    width: calc(100% - 80vw);
+    border: 2px solid rgb(255, 255, 255);
+    box-shadow: 0px 0px 5px rgb(0, 0, 0);
+    cursor: pointer;
+    margin-top: 5px;
+}
+    #buy:hover ,#send:hover{
+        background-color: rgb(49, 49, 49);
+        transition: 0.2s ease-in-out;
+    }
+    #paydiv{
+    height: 410px;
+    width: calc(100% - 50vw);
+    background-color: rgba(0, 0, 0, 0.904);
+    backdrop-filter: blur(8px);
+    box-shadow: 0px 0px 5px rgb(178, 185, 108);
+}
+    #paydiv input{
+    height: 40px;
+    width: calc(100% - 20vw);
+    background-color: rgba(255, 255, 255, 0.274);
+    border-radius: 20px;
+    box-shadow: 0px 0px 6px rgb(170, 125, 125);
+    outline: 1px solid rgb(255, 208, 0);
+}
+
+    .slidedown{
+    transform: translateX(150%);
+    transition: 0.6s ease-in-out;
+}
+
+    #contiti7awi{
+    height: 45px;
+    width: calc(100% - 30vw);
+}
+
+    #send{
+    height: 40px;
+    width: 100%;
+    border-radius: 20px;
+}
+
+}
+
+@media (min-width: 1440px){
+    #home{
+    height: 80px;
+    font-size: 2em;
+    width: 200px;
+    border: 3px solid white;
+    box-shadow: 0px 0px 7px rgb(170, 125, 125);
+}
+
+    #img7awi img{
+    margin-top: calc(18vh);
+    width: 27%;
+    height: 400px;
+    box-shadow: 7px 7px 10px black;
+}
+
+    .products{
+    margin-top: calc(16vh);
+    font-size: 2.2em;
+}
+
+    .size h1{
+    padding: 15px;
+    width: 5vw;
+    background-color: rgba(255, 255, 255, 0.856);
+    font-size: 2.4em;
+}
+    #buy{
+    height: 75px;
+    width: calc(100% - 80vw);
+    font-size: 2em;
+}
+
+   #paydiv{
+    position: fixed; top: calc(14vh); bottom: 0;
+    height: 750px;
+    width: calc(100% - 40vw);
+    background-color: rgba(0, 0, 0, 0.904);
+    box-shadow: 0px 0px 6px rgb(178, 185, 108);
+    gap: 20px;
+}
+
+    #info{
+    font-size: 3em;
+}
+
+    #paydiv input{
+    height: 60px;
+    width: calc(100% - 20vw);
+    border-radius: 40px;
+    font-size: 1.5em;
+}
+
+    #contiti7awi{
+    height: 90px;
+    width: calc(100% - 40vw);
+    font-size: 1.8em;
+    margin-top: 4vh;
+}
+
+#contiti7awi p{
+    padding: 0 30px;
+}
+
+    
+#send{
+    margin-top: 4vh;
+    height: 75px;
+    width: 100%;
+    border-radius: 40px;
+    font-size: 2em;
+}
+
+    #sented{
+    margin-top: 4vh;
+    font-size: 2em;
+    color: white;
+}
+
+}
