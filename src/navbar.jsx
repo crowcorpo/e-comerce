@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import "./Navbar.css";
+
 import { useAuth } from "./authcontext.jsx";
 
 function Navbar({ hideLinks }) {
