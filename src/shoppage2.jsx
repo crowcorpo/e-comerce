@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { supabase } from './superbase.ts';
 import { useAuth } from './authcontext.jsx';
 import './shoppage2.css';
@@ -13,90 +13,101 @@ const WILAYAS = [
     'Aïn Témouchent','Ghardaïa','Relizane'
 ];
 
+const EMPTY_ORDER = { fullname: '', email: '', phone: '', address: '', city: '', wilaya: '' };
+
 function ShopPage2({ productId, onBack }) {
 
     const { isAdmin } = useAuth();
 
-    const [ product, setproduct ]           = useState(null);
-    const [ images, setimages ]             = useState([]);
-    const [ currentImg, setcurrentImg ]     = useState(0);
-    const [ sizes, setsizes ]               = useState([]);
-    const [ selectedSize, setselectedSize ] = useState(null);
-    const [ quantity, setquantity ]         = useState(1);
-    const [ loading, setloading ]           = useState(true);
+    const [ product,      setProduct      ] = useState(null);
+    const [ images,       setImages       ] = useState([]);
+    const [ currentImg,   setCurrentImg   ] = useState(0);
+    const [ sizes,        setSizes        ] = useState([]);
+    const [ selectedSize, setSelectedSize ] = useState(null);
+    const [ quantity,     setQuantity     ] = useState(1);
+    const [ loading,      setLoading      ] = useState(true);
 
-    const [ showDescEdit, setshowDescEdit ] = useState(false);
-    const [ descDraft, setdescDraft ]       = useState('');
+    // ── grouped: description edit ──
+    const [ descEdit, setDescEdit ] = useState({ show: false, draft: '' });
 
-    const [ newSize, setnewSize ]           = useState('');
+    const [ newSize,  setNewSize  ] = useState('');
 
-    const [ showOrder, setshowOrder ]       = useState(false);
-    const [ orderForm, setorderForm ]       = useState({
-        fullname: '', email: '', phone: '', address: '', city: '', wilaya: ''
+    // ── grouped: order modal ──
+    const [ orderModal, setOrderModal ] = useState({
+        show: false, form: EMPTY_ORDER, sending: false, sent: false, error: ''
     });
-    const [ sending, setsending ]           = useState(false);
-    const [ sent, setsent ]                 = useState(false);
-    const [ orderError, setorderError ]     = useState('');
 
     const touchstartX = useRef(null);
+    const hasFetched  = useRef(false);
 
-    const getproduct = async () => {
-        setloading(true);
+    // ==========================
+    // fetch all data (cached)
+    // ==========================
+    const getProduct = useCallback(async () => {
+        setLoading(true);
         const { data, error } = await supabase
             .from('products')
             .select('*')
             .eq('id', productId)
             .single();
-        if (error) { console.error(error); setloading(false); return; }
-        setproduct(data);
-        setloading(false);
-    }
+        if (error) { console.error(error); setLoading(false); return; }
+        setProduct(data);
+        setLoading(false);
+    }, [productId]);
 
-    const getimages = async () => {
+    const getImages = useCallback(async () => {
         const { data, error } = await supabase
             .from('product_images')
             .select('*')
             .eq('product_id', productId)
             .order('created_at', { ascending: true });
         if (error) { console.error(error); return; }
-        setimages(data || []);
-    }
+        setImages(data || []);
+    }, [productId]);
 
-    const getsizes = async () => {
+    const getSizes = useCallback(async () => {
         const { data, error } = await supabase
             .from('product_sizes')
             .select('*')
             .eq('product_id', productId)
             .order('created_at', { ascending: true });
         if (error) { console.error(error); return; }
-        setsizes(data || []);
-    }
+        setSizes(data || []);
+    }, [productId]);
 
     useEffect(() => {
-        getproduct();
-        getimages();
-        getsizes();
-    }, [ productId ]);
+        if (hasFetched.current) return;
+        hasFetched.current = true;
+        getProduct();
+        getImages();
+        getSizes();
+    }, [getProduct, getImages, getSizes]);
 
+    // ==========================
+    // image slider
+    // ==========================
     const allImages = product
-        ? [ { id: 'main', image_url: product.image_url }, ...images ]
+        ? [{ id: 'main', image_url: product.image_url }, ...images]
         : images;
 
-    const prevImg = () => setcurrentImg(i => (i - 1 + allImages.length) % allImages.length);
-    const nextImg = () => setcurrentImg(i => (i + 1) % allImages.length);
+    const prevImg = () => setCurrentImg(i => (i - 1 + allImages.length) % allImages.length);
+    const nextImg = () => setCurrentImg(i => (i + 1) % allImages.length);
 
-    const onTouchStart = (e) => { touchstartX.current = e.touches[0].clientX; }
+    const onTouchStart = (e) => { touchstartX.current = e.touches[0].clientX; };
     const onTouchEnd   = (e) => {
         if (touchstartX.current === null) return;
         const diff = touchstartX.current - e.changedTouches[0].clientX;
         if (Math.abs(diff) > 40) { diff > 0 ? nextImg() : prevImg(); }
         touchstartX.current = null;
-    }
+    };
 
+    // ==========================
+    // image management (admin)
+    // ==========================
     const addImage = async (file) => {
         if (!file) return;
         const uniquename = `${Date.now()}_${file.name}`;
-        const filepath = `admin/assets/gallery/${uniquename}`;
+        const filepath   = `admin/assets/gallery/${uniquename}`;
         const { error: uploaderror } = await supabase.storage
             .from('admin-images')
             .upload(filepath, file);
@@ -106,8 +117,8 @@ function ShopPage2({ productId, onBack }) {
             .from('product_images')
             .insert({ product_id: productId, image_url: pub.publicUrl });
         if (dberror) { console.error(dberror); return; }
-        await getimages();
-    }
+        await getImages();
+    };
 
     const deleteCurrentImage = async () => {
         if (currentImg === 0) return;
@@ -116,10 +127,13 @@ function ShopPage2({ productId, onBack }) {
         const path = img.image_url.split('/admin-images/')[1];
         if (path) await supabase.storage.from('admin-images').remove([decodeURIComponent(path)]);
         await supabase.from('product_images').delete().eq('id', img.id);
-        await getimages();
-        setcurrentImg(i => Math.max(0, i - 1));
-    }
+        await getImages();
+        setCurrentImg(i => Math.max(0, i - 1));
+    };
 
+    // ==========================
+    // size management (admin)
+    // ==========================
     const addSize = async () => {
         const trimmed = newSize.trim();
         if (!trimmed) return;
@@ -130,68 +144,82 @@ function ShopPage2({ productId, onBack }) {
             .select()
             .single();
         if (error) { console.error(error); return; }
-        setsizes(prev => [...prev, data]);
-        setnewSize('');
-    }
+        setSizes(prev => [...prev, data]);
+        setNewSize('');
+    };
 
     const deleteSize = async (sizeRow) => {
         await supabase.from('product_sizes').delete().eq('id', sizeRow.id);
-        setsizes(prev => prev.filter(s => s.id !== sizeRow.id));
-        if (selectedSize === sizeRow.size) setselectedSize(null);
-    }
+        setSizes(prev => prev.filter(s => s.id !== sizeRow.id));
+        if (selectedSize === sizeRow.size) setSelectedSize(null);
+    };
 
     const toggleSize = async (sizeRow) => {
         await supabase.from('product_sizes').update({ available: !sizeRow.available }).eq('id', sizeRow.id);
-        setsizes(prev => prev.map(s => s.id === sizeRow.id ? { ...s, available: !s.available } : s));
-        if (selectedSize === sizeRow.size && sizeRow.available) setselectedSize(null);
-    }
+        setSizes(prev => prev.map(s => s.id === sizeRow.id ? { ...s, available: !s.available } : s));
+        if (selectedSize === sizeRow.size && sizeRow.available) setSelectedSize(null);
+    };
 
+    // ==========================
+    // description (admin)
+    // ==========================
     const saveDesc = async () => {
-        const { error } = await supabase.from('products').update({ description: descDraft }).eq('id', productId);
+        const { error } = await supabase
+            .from('products')
+            .update({ description: descEdit.draft })
+            .eq('id', productId);
         if (error) { console.error(error); return; }
-        setproduct(prev => ({ ...prev, description: descDraft }));
-        setshowDescEdit(false);
+        setProduct(prev => ({ ...prev, description: descEdit.draft }));
+        setDescEdit({ show: false, draft: '' });
         document.body.style.overflow = 'auto';
-    }
+    };
+
+    // ==========================
+    // order
+    // ==========================
+    const openOrder = () => {
+        setOrderModal({ show: true, form: EMPTY_ORDER, sending: false, sent: false, error: '' });
+        document.body.style.overflow = 'hidden';
+    };
+
+    const closeOrder = () => {
+        setOrderModal(o => ({ ...o, show: false }));
+        document.body.style.overflow = 'auto';
+    };
 
     const sendOrder = async () => {
-        const { fullname, email, phone, address, city, wilaya } = orderForm;
+        const { fullname, email, phone, address, city, wilaya } = orderModal.form;
         if (!fullname || !email || !phone || !address || !city || !wilaya) {
-            setorderError('please fill in all fields'); return;
+            setOrderModal(o => ({ ...o, error: 'please fill in all fields' })); return;
         }
-        setorderError('');
-        setsending(true);
+        setOrderModal(o => ({ ...o, error: '', sending: true }));
         try {
             const res = await fetch('https://formspree.io/f/mdaljepz', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
+                method  : 'POST',
+                headers : { 'Content-Type': 'application/json' },
+                body    : JSON.stringify({
                     product_name  : product.name,
                     product_price : `$${Number(product.price).toFixed(2)}`,
                     category      : product.category,
                     size          : selectedSize,
-                    quantity      : quantity,
+                    quantity,
                     total_price   : `$${(Number(product.price) * quantity).toFixed(2)}`,
                     fullname, email, phone, address, city, wilaya,
                     ordered_at    : new Date().toLocaleString(),
                 })
             });
-            if (res.ok) { setsent(true); }
-            else { setorderError('something went wrong, please try again'); }
-        } catch (err) { setorderError('something went wrong, please try again'); }
-        setsending(false);
-    }
+            if (res.ok) { setOrderModal(o => ({ ...o, sent: true, sending: false })); }
+            else        { setOrderModal(o => ({ ...o, error: 'something went wrong, please try again', sending: false })); }
+        } catch {
+            setOrderModal(o => ({ ...o, error: 'something went wrong, please try again', sending: false }));
+        }
+    };
 
-    const openOrder = () => {
-        setshowOrder(true); setsent(false); setorderError('');
-        setorderForm({ fullname:'', email:'', phone:'', address:'', city:'', wilaya:'' });
-        document.body.style.overflow = 'hidden';
-    }
-
-    const closeOrder = () => { setshowOrder(false); document.body.style.overflow = 'auto'; }
-
-    if (loading) return <div id="sp2-loading"><div id="sp2-spinner"/></div>;
-    if (!product) return <div id="sp2-loading"><p>product not found</p></div>;
+    // ==========================
+    // render guards
+    // ==========================
+    if (loading)   return <div id="sp2-loading"><div id="sp2-spinner"/></div>;
+    if (!product)  return <div id="sp2-loading"><p>product not found</p></div>;
 
     return (
         <>
@@ -207,13 +235,14 @@ function ShopPage2({ productId, onBack }) {
                 <div id="sp2-inner">
 
                     {/* ── IMAGE SLIDER ── */}
-                    <div id="sp2-imgwrap"
-                        onTouchStart={onTouchStart}
-                        onTouchEnd={onTouchEnd}
-                    >
+                    <div id="sp2-imgwrap" onTouchStart={onTouchStart} onTouchEnd={onTouchEnd}>
+
+                        {/* ✅ FIX: lazy loading + decoding async on slider image */}
                         <img
                             src={ allImages[currentImg]?.image_url || product.image_url }
                             alt={ product.name }
+                            loading="lazy"
+                            decoding="async"
                         />
 
                         { allImages.length > 1 &&
@@ -233,7 +262,7 @@ function ShopPage2({ productId, onBack }) {
                                         <button
                                             key={i}
                                             className={`sp2-img-dot${ i === currentImg ? ' active' : '' }`}
-                                            onClick={() => setcurrentImg(i)}
+                                            onClick={() => setCurrentImg(i)}
                                         />
                                     ))}
                                 </div>
@@ -288,8 +317,7 @@ function ShopPage2({ productId, onBack }) {
                             }
                             { isAdmin &&
                                 <button id="sp2-editdesc" onClick={() => {
-                                    setdescDraft(product.description || '');
-                                    setshowDescEdit(true);
+                                    setDescEdit({ show: true, draft: product.description || '' });
                                     document.body.style.overflow = 'hidden';
                                 }}>
                                     <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
@@ -315,7 +343,7 @@ function ShopPage2({ productId, onBack }) {
                                         type="text"
                                         placeholder="add size e.g. 42 or XL"
                                         value={newSize}
-                                        onChange={e => setnewSize(e.target.value)}
+                                        onChange={e => setNewSize(e.target.value)}
                                         onKeyDown={e => e.key === 'Enter' && addSize()}
                                     />
                                     <button className="size-add-btn" onClick={addSize}>
@@ -334,7 +362,7 @@ function ShopPage2({ productId, onBack }) {
                                         <button
                                             className={`sp2-size-btn${ !row.available ? ' unavailable' : '' }${ selectedSize === row.size ? ' selected' : '' }`}
                                             disabled={ !row.available }
-                                            onClick={() => setselectedSize(row.size)}
+                                            onClick={() => setSelectedSize(row.size)}
                                         >{ row.size }</button>
                                         { isAdmin &&
                                             <div className="sp2-size-admin-btns">
@@ -367,13 +395,13 @@ function ShopPage2({ productId, onBack }) {
                             <div id="sp2-qty-controls">
                                 <button
                                     className="sp2-qty-btn"
-                                    onClick={() => setquantity(q => Math.max(1, q - 1))}
+                                    onClick={() => setQuantity(q => Math.max(1, q - 1))}
                                     disabled={ quantity <= 1 }
                                 >−</button>
                                 <span id="sp2-qty-value">{ quantity }</span>
                                 <button
                                     className="sp2-qty-btn"
-                                    onClick={() => setquantity(q => Math.min(10, q + 1))}
+                                    onClick={() => setQuantity(q => Math.min(10, q + 1))}
                                     disabled={ quantity >= 10 }
                                 >+</button>
                             </div>
@@ -388,15 +416,19 @@ function ShopPage2({ productId, onBack }) {
             </div>
 
             {/* ======= DESCRIPTION MODAL ======= */}
-            { showDescEdit &&
+            { descEdit.show &&
                 <div className="sp2-modal-bg">
                     <div className="sp2-modal">
                         <h2 className="sp2-modal-title">{ product.description ? 'edit description' : 'add description' }</h2>
-                        <textarea className="sp2-textarea" placeholder="write a description..."
-                            value={descDraft} onChange={(e) => setdescDraft(e.target.value)} rows={5}
+                        <textarea
+                            className="sp2-textarea"
+                            placeholder="write a description..."
+                            value={descEdit.draft}
+                            onChange={(e) => setDescEdit(d => ({ ...d, draft: e.target.value }))}
+                            rows={5}
                         />
                         <div className="sp2-modal-btns">
-                            <button className="sp2-btn-cancel" onClick={() => { setshowDescEdit(false); document.body.style.overflow = 'auto'; }}>
+                            <button className="sp2-btn-cancel" onClick={() => { setDescEdit({ show: false, draft: '' }); document.body.style.overflow = 'auto'; }}>
                                 <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
                                     <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
                                 </svg>
@@ -414,10 +446,10 @@ function ShopPage2({ productId, onBack }) {
             }
 
             {/* ======= ORDER MODAL ======= */}
-            { showOrder &&
+            { orderModal.show &&
                 <div className="sp2-modal-bg">
                     <div className="sp2-modal sp2-order-modal">
-                        { sent
+                        { orderModal.sent
                             ? <>
                                 <div className="sp2-success-icon">✓</div>
                                 <h2 className="sp2-modal-title">order received!</h2>
@@ -428,17 +460,17 @@ function ShopPage2({ productId, onBack }) {
                                 <h2 className="sp2-modal-title">complete your order</h2>
                                 <p className="sp2-modal-sub">{ product.name } — size { selectedSize } — qty { quantity } — ${ (Number(product.price) * quantity).toFixed(2) }</p>
                                 <div className="sp2-form">
-                                    <input className="sp2-input" type="text" placeholder="full name" value={orderForm.fullname} onChange={e => setorderForm(p => ({ ...p, fullname: e.target.value }))}/>
-                                    <input className="sp2-input" type="email" placeholder="email" value={orderForm.email} onChange={e => setorderForm(p => ({ ...p, email: e.target.value }))}/>
-                                    <input className="sp2-input" type="tel" placeholder="phone number" value={orderForm.phone} onChange={e => setorderForm(p => ({ ...p, phone: e.target.value }))}/>
-                                    <input className="sp2-input" type="text" placeholder="shipping address" value={orderForm.address} onChange={e => setorderForm(p => ({ ...p, address: e.target.value }))}/>
-                                    <input className="sp2-input" type="text" placeholder="city" value={orderForm.city} onChange={e => setorderForm(p => ({ ...p, city: e.target.value }))}/>
-                                    <select className="sp2-input sp2-select" value={orderForm.wilaya} onChange={e => setorderForm(p => ({ ...p, wilaya: e.target.value }))}>
+                                    <input className="sp2-input" type="text"  placeholder="full name"        value={orderModal.form.fullname} onChange={e => setOrderModal(o => ({ ...o, form: { ...o.form, fullname: e.target.value } }))}/>
+                                    <input className="sp2-input" type="email" placeholder="email"            value={orderModal.form.email}    onChange={e => setOrderModal(o => ({ ...o, form: { ...o.form, email:    e.target.value } }))}/>
+                                    <input className="sp2-input" type="tel"   placeholder="phone number"     value={orderModal.form.phone}    onChange={e => setOrderModal(o => ({ ...o, form: { ...o.form, phone:    e.target.value } }))}/>
+                                    <input className="sp2-input" type="text"  placeholder="shipping address" value={orderModal.form.address}  onChange={e => setOrderModal(o => ({ ...o, form: { ...o.form, address:  e.target.value } }))}/>
+                                    <input className="sp2-input" type="text"  placeholder="city"            value={orderModal.form.city}     onChange={e => setOrderModal(o => ({ ...o, form: { ...o.form, city:     e.target.value } }))}/>
+                                    <select className="sp2-input sp2-select" value={orderModal.form.wilaya} onChange={e => setOrderModal(o => ({ ...o, form: { ...o.form, wilaya: e.target.value } }))}>
                                         <option value="">select wilaya</option>
                                         { WILAYAS.map(w => <option key={w} value={w}>{ w }</option>) }
                                     </select>
                                 </div>
-                                { orderError && <p className="sp2-error">{ orderError }</p> }
+                                { orderModal.error && <p className="sp2-error">{ orderModal.error }</p> }
                                 <div className="sp2-modal-btns">
                                     <button className="sp2-btn-cancel" onClick={closeOrder}>
                                         <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
@@ -446,8 +478,8 @@ function ShopPage2({ productId, onBack }) {
                                         </svg>
                                         cancel
                                     </button>
-                                    <button className="sp2-btn-confirm" onClick={sendOrder} disabled={sending}>
-                                        { sending ? 'sending...' : <>
+                                    <button className="sp2-btn-confirm" onClick={sendOrder} disabled={orderModal.sending}>
+                                        { orderModal.sending ? 'sending...' : <>
                                             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
                                                 <polyline points="20 6 9 17 4 12"/>
                                             </svg>

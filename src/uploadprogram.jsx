@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { supabase } from './superbase.ts';
 import { useAuth } from './authcontext.jsx';
 
@@ -6,54 +6,52 @@ const CATEGORY_SIZES = {
     sneakers : ['36','37','38','39','40','41','42','43','44','45'],
     clothes  : ['XS','S','M','L','XL','XXL'],
     pants    : ['34','36','38','40','42','44','46','48'],
-    caps     : [], // custom sizes added by admin
+    caps     : [],
 };
 
 const CATEGORIES = ['sneakers','clothes','pants','caps'];
+
+const EMPTY_UPLOAD = { file: null, name: '', price: '', cat: 'sneakers' };
+const EMPTY_EDIT   = { id: null, oldImg: null, file: null, name: '', price: '', cat: 'sneakers' };
 
 function Test2({ onProductClick }) {
 
     const { isAdmin } = useAuth();
 
-    const [ products, setproducts ] = useState([]);
+    const [ products,    setProducts    ] = useState([]);
+    const [ showUpload,  setShowUpload  ] = useState(false);
+    const [ uploadForm,  setUploadForm  ] = useState(EMPTY_UPLOAD);
+    const [ showConfirm, setShowConfirm ] = useState(false);
+    const [ deleteTarget,setDeleteTarget] = useState({ id: null, img: null });
+    const [ showEdit,    setShowEdit    ] = useState(false);
+    const [ editForm,    setEditForm    ] = useState(EMPTY_EDIT);
 
-    const [ showUpload, setshowUpload ]     = useState(false);
-    const [ uploadFile, setuploadFile ]     = useState(null);
-    const [ uploadName, setuploadName ]     = useState('');
-    const [ uploadPrice, setuploadPrice ]   = useState('');
-    const [ uploadCat, setuploadCat ]       = useState('sneakers');
-
-    const [ showConfirm, setshowConfirm ]   = useState(false);
-    const [ selectedId, setselectedId ]     = useState(null);
-    const [ selectedImg, setselectedImg ]   = useState(null);
-
-    const [ showEdit, setshowEdit ]         = useState(false);
-    const [ editId, seteditId ]             = useState(null);
-    const [ editOldImg, seteditOldImg ]     = useState(null);
-    const [ editFile, seteditFile ]         = useState(null);
-    const [ editName, seteditName ]         = useState('');
-    const [ editPrice, seteditPrice ]       = useState('');
-    const [ editCat, seteditCat ]           = useState('sneakers');
+    // ── prevent double-fetch ──
+    const hasFetched = useRef(false);
 
     // ==========================
-    // fetch products
+    // fetch products (cached)
     // ==========================
-    const getproducts = async () => {
+    const getProducts = useCallback(async () => {
         const { data, error } = await supabase
             .from('products')
             .select('*')
             .order('created_at', { ascending: false });
         if (error) { console.error(error); return; }
-        setproducts(data);
-    }
+        setProducts(data);
+    }, []);
 
-    useEffect(() => { getproducts(); }, []);
+    useEffect(() => {
+        if (hasFetched.current) return;
+        hasFetched.current = true;
+        getProducts();
+    }, [getProducts]);
 
     // ==========================
     // listen for upload event from navbar
     // ==========================
     useEffect(() => {
-        const open = () => { setshowUpload(true); document.body.style.overflow = 'hidden'; };
+        const open = () => { setShowUpload(true); document.body.style.overflow = 'hidden'; };
         window.addEventListener('gallery-upload-open', open);
         return () => window.removeEventListener('gallery-upload-open', open);
     }, []);
@@ -62,14 +60,15 @@ function Test2({ onProductClick }) {
     // upload product
     // ==========================
     const confirmUpload = async () => {
-        if (!uploadFile || !uploadName || !uploadPrice) return;
+        const { file, name, price, cat } = uploadForm;
+        if (!file || !name || !price) return;
 
-        const uniquename = `${Date.now()}_${uploadFile.name}`;
-        const filepath = `admin/assets/gallery/${uniquename}`;
+        const uniquename = `${Date.now()}_${file.name}`;
+        const filepath   = `admin/assets/gallery/${uniquename}`;
 
         const { error: uploaderror } = await supabase.storage
             .from('admin-images')
-            .upload(filepath, uploadFile);
+            .upload(filepath, file);
         if (uploaderror) { console.error(uploaderror); return; }
 
         const { data: pub } = supabase.storage
@@ -78,58 +77,73 @@ function Test2({ onProductClick }) {
 
         const { error: dberror } = await supabase
             .from('products')
-            .insert({
-                name      : uploadName,
-                price     : parseFloat(uploadPrice),
-                image_url : pub.publicUrl,
-                category  : uploadCat,
-            });
+            .insert({ name, price: parseFloat(price), image_url: pub.publicUrl, category: cat });
         if (dberror) { console.error(dberror); return; }
 
-        setuploadFile(null);
-        setuploadName('');
-        setuploadPrice('');
-        setuploadCat('sneakers');
-        setshowUpload(false);
+        setUploadForm(EMPTY_UPLOAD);
+        setShowUpload(false);
         document.body.style.overflow = 'auto';
-        await getproducts();
-    }
+        await getProducts();
+    };
+
+    const closeUpload = () => {
+        setUploadForm(EMPTY_UPLOAD);
+        setShowUpload(false);
+        document.body.style.overflow = 'auto';
+    };
 
     // ==========================
     // delete product
     // ==========================
     const remove = async () => {
-        const { error: dberror } = await supabase
-            .from('products')
-            .delete()
-            .eq('id', selectedId);
+        const { id, img } = deleteTarget;
+        const { error: dberror } = await supabase.from('products').delete().eq('id', id);
         if (dberror) { console.error(dberror); return; }
 
-        const path = selectedImg.split('/admin-images/')[1];
+        const path = img.split('/admin-images/')[1];
         if (path) await supabase.storage.from('admin-images').remove([decodeURIComponent(path)]);
 
-        setproducts(prev => prev.filter(p => p.id !== selectedId));
-        setselectedId(null);
-        setselectedImg(null);
-        setshowConfirm(false);
+        setProducts(prev => prev.filter(p => p.id !== id));
+        setDeleteTarget({ id: null, img: null });
+        setShowConfirm(false);
         document.body.style.overflow = 'auto';
-    }
+    };
 
     // ==========================
     // edit product
     // ==========================
+    const openEdit = (product) => {
+        setEditForm({
+            id     : product.id,
+            oldImg : product.image_url,
+            file   : null,
+            name   : product.name,
+            price  : String(product.price),
+            cat    : product.category || 'sneakers',
+        });
+        setShowEdit(true);
+        document.body.style.overflow = 'hidden';
+    };
+
+    const closeEdit = () => {
+        setEditForm(EMPTY_EDIT);
+        setShowEdit(false);
+        document.body.style.overflow = 'auto';
+    };
+
     const confirmEdit = async () => {
+        const { id, oldImg, file, name, price, cat } = editForm;
         let newImageUrl = null;
 
-        if (editFile) {
-            const oldpath = editOldImg.split('/admin-images/')[1];
+        if (file) {
+            const oldpath = oldImg.split('/admin-images/')[1];
             if (oldpath) await supabase.storage.from('admin-images').remove([decodeURIComponent(oldpath)]);
 
-            const uniquename = `${Date.now()}_${editFile.name}`;
-            const filepath = `admin/assets/gallery/${uniquename}`;
+            const uniquename = `${Date.now()}_${file.name}`;
+            const filepath   = `admin/assets/gallery/${uniquename}`;
             const { error: uploaderror } = await supabase.storage
                 .from('admin-images')
-                .upload(filepath, editFile);
+                .upload(filepath, file);
             if (uploaderror) { console.error(uploaderror); return; }
 
             const { data: pub } = supabase.storage.from('admin-images').getPublicUrl(filepath);
@@ -137,43 +151,20 @@ function Test2({ onProductClick }) {
         }
 
         const updates = {
-            name     : editName,
-            price    : parseFloat(editPrice),
-            category : editCat,
-            ...(newImageUrl && { image_url: newImageUrl })
+            name,
+            price    : parseFloat(price),
+            category : cat,
+            ...(newImageUrl && { image_url: newImageUrl }),
         };
 
-        const { error } = await supabase.from('products').update(updates).eq('id', editId);
+        const { error } = await supabase.from('products').update(updates).eq('id', id);
         if (error) { console.error(error); return; }
 
-        seteditId(null); seteditOldImg(null); seteditFile(null);
-        seteditName(''); seteditPrice(''); seteditCat('sneakers');
-        setshowEdit(false);
+        setEditForm(EMPTY_EDIT);
+        setShowEdit(false);
         document.body.style.overflow = 'auto';
-        await getproducts();
-    }
-
-    const openEdit = (product) => {
-        seteditId(product.id);
-        seteditOldImg(product.image_url);
-        seteditName(product.name);
-        seteditPrice(String(product.price));
-        seteditCat(product.category || 'sneakers');
-        setshowEdit(true);
-        document.body.style.overflow = 'hidden';
-    }
-
-    const closeUpload = () => {
-        setuploadFile(null); setuploadName(''); setuploadPrice(''); setuploadCat('sneakers');
-        setshowUpload(false);
-        document.body.style.overflow = 'auto';
-    }
-
-    const closeEdit = () => {
-        seteditId(null); seteditFile(null); seteditName(''); seteditPrice('');
-        setshowEdit(false);
-        document.body.style.overflow = 'auto';
-    }
+        await getProducts();
+    };
 
     return (
         <>
@@ -181,8 +172,19 @@ function Test2({ onProductClick }) {
                 <div id="img7awi">
                     { products.map((product) => (
                         <div className="product-card" key={product.id}>
-                            <div className="product-img-wrap" onClick={() => onProductClick(product.id)} style={{ cursor:'pointer' }}>
-                                <img src={product.image_url} alt={product.name} />
+                            <div
+                                className="product-img-wrap"
+                                onClick={() => onProductClick(product.id)}
+                                style={{ cursor: 'pointer' }}
+                            >
+                                {/* ✅ FIX 1: loading="lazy" — images only load when visible */}
+                                <img
+                                    src={product.image_url}
+                                    alt={product.name}
+                                    loading="lazy"
+                                    decoding="async"
+                                />
+
                                 { isAdmin &&
                                     <div id="imgbtngroup">
                                         <button id="edit" onClick={(e) => { e.stopPropagation(); openEdit(product); }}>
@@ -194,9 +196,8 @@ function Test2({ onProductClick }) {
                                         </button>
                                         <button id="delete" onClick={(e) => {
                                             e.stopPropagation();
-                                            setselectedId(product.id);
-                                            setselectedImg(product.image_url);
-                                            setshowConfirm(true);
+                                            setDeleteTarget({ id: product.id, img: product.image_url });
+                                            setShowConfirm(true);
                                             document.body.style.overflow = 'hidden';
                                         }}>
                                             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
@@ -211,7 +212,13 @@ function Test2({ onProductClick }) {
                                 }
                             </div>
                             <div className="product-info">
-                                <span className="product-name" onClick={() => onProductClick(product.id)} style={{ cursor:'pointer' }}>{ product.name }</span>
+                                <span
+                                    className="product-name"
+                                    onClick={() => onProductClick(product.id)}
+                                    style={{ cursor: 'pointer' }}
+                                >
+                                    { product.name }
+                                </span>
                                 <span className="product-price">${ Number(product.price).toFixed(2) }</span>
                             </div>
                         </div>
@@ -226,8 +233,8 @@ function Test2({ onProductClick }) {
                         <h1 id="text">add new product</h1>
 
                         <div className="upload-img-preview" onClick={() => document.getElementById('real-file-input').click()}>
-                            { uploadFile
-                                ? <img src={URL.createObjectURL(uploadFile)} alt="preview" />
+                            { uploadForm.file
+                                ? <img src={URL.createObjectURL(uploadForm.file)} alt="preview" />
                                 : <>
                                     <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
                                         <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
@@ -238,29 +245,41 @@ function Test2({ onProductClick }) {
                                 </>
                             }
                         </div>
-                        <input id="real-file-input" type="file" accept="image/*" style={{ display:'none' }}
-                            onChange={(e) => setuploadFile(e.target.files[0])}
+                        <input
+                            id="real-file-input"
+                            type="file"
+                            accept="image/*"
+                            style={{ display: 'none' }}
+                            onChange={(e) => setUploadForm(f => ({ ...f, file: e.target.files[0] }))}
                         />
 
-                        <input className="product-input" type="text" placeholder="product name"
-                            value={uploadName} onChange={(e) => setuploadName(e.target.value)}
+                        <input
+                            className="product-input"
+                            type="text"
+                            placeholder="product name"
+                            value={uploadForm.name}
+                            onChange={(e) => setUploadForm(f => ({ ...f, name: e.target.value }))}
                         />
 
                         <div className="price-input-wrap">
                             <span className="price-symbol">$</span>
-                            <input className="product-input price-input" type="number" placeholder="0.00"
-                                min="0" step="0.01" value={uploadPrice}
-                                onChange={(e) => setuploadPrice(e.target.value)}
+                            <input
+                                className="product-input price-input"
+                                type="number"
+                                placeholder="0.00"
+                                min="0"
+                                step="0.01"
+                                value={uploadForm.price}
+                                onChange={(e) => setUploadForm(f => ({ ...f, price: e.target.value }))}
                             />
                         </div>
 
-                        {/* category selector */}
                         <div className="category-selector">
                             { CATEGORIES.map(cat => (
                                 <button
                                     key={cat}
-                                    className={`cat-btn${ uploadCat === cat ? ' cat-active' : '' }`}
-                                    onClick={() => setuploadCat(cat)}
+                                    className={`cat-btn${ uploadForm.cat === cat ? ' cat-active' : '' }`}
+                                    onClick={() => setUploadForm(f => ({ ...f, cat }))}
                                 >
                                     { cat }
                                 </button>
@@ -274,9 +293,11 @@ function Test2({ onProductClick }) {
                                 </svg>
                                 cancel
                             </button>
-                            <button id="koko" className="confirm-btn"
+                            <button
+                                id="koko"
+                                className="confirm-btn"
                                 onClick={confirmUpload}
-                                disabled={!uploadFile || !uploadName || !uploadPrice}
+                                disabled={!uploadForm.file || !uploadForm.name || !uploadForm.price}
                             >
                                 <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
                                     <polyline points="20 6 9 17 4 12"/>
@@ -296,7 +317,8 @@ function Test2({ onProductClick }) {
                         <p className="modal-sub">this cannot be undone</p>
                         <div id="slmodalbtns">
                             <button id="koko" onClick={() => {
-                                setshowConfirm(false); setselectedId(null); setselectedImg(null);
+                                setShowConfirm(false);
+                                setDeleteTarget({ id: null, img: null });
                                 document.body.style.overflow = 'auto';
                             }}>
                                 <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
@@ -325,9 +347,9 @@ function Test2({ onProductClick }) {
                         <h1 id="text">edit product</h1>
 
                         <div className="upload-img-preview" onClick={() => document.getElementById('edit-file-input').click()}>
-                            { editFile
-                                ? <img src={URL.createObjectURL(editFile)} alt="preview" />
-                                : <img src={editOldImg} alt="current" />
+                            { editForm.file
+                                ? <img src={URL.createObjectURL(editForm.file)} alt="preview" />
+                                : <img src={editForm.oldImg} alt="current" loading="lazy" decoding="async" />
                             }
                             <div className="img-overlay-hint">
                                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -338,29 +360,41 @@ function Test2({ onProductClick }) {
                                 change image
                             </div>
                         </div>
-                        <input id="edit-file-input" type="file" accept="image/*" style={{ display:'none' }}
-                            onChange={(e) => seteditFile(e.target.files[0])}
+                        <input
+                            id="edit-file-input"
+                            type="file"
+                            accept="image/*"
+                            style={{ display: 'none' }}
+                            onChange={(e) => setEditForm(f => ({ ...f, file: e.target.files[0] }))}
                         />
 
-                        <input className="product-input" type="text" placeholder="product name"
-                            value={editName} onChange={(e) => seteditName(e.target.value)}
+                        <input
+                            className="product-input"
+                            type="text"
+                            placeholder="product name"
+                            value={editForm.name}
+                            onChange={(e) => setEditForm(f => ({ ...f, name: e.target.value }))}
                         />
 
                         <div className="price-input-wrap">
                             <span className="price-symbol">$</span>
-                            <input className="product-input price-input" type="number" placeholder="0.00"
-                                min="0" step="0.01" value={editPrice}
-                                onChange={(e) => seteditPrice(e.target.value)}
+                            <input
+                                className="product-input price-input"
+                                type="number"
+                                placeholder="0.00"
+                                min="0"
+                                step="0.01"
+                                value={editForm.price}
+                                onChange={(e) => setEditForm(f => ({ ...f, price: e.target.value }))}
                             />
                         </div>
 
-                        {/* category selector */}
                         <div className="category-selector">
                             { CATEGORIES.map(cat => (
                                 <button
                                     key={cat}
-                                    className={`cat-btn${ editCat === cat ? ' cat-active' : '' }`}
-                                    onClick={() => seteditCat(cat)}
+                                    className={`cat-btn${ editForm.cat === cat ? ' cat-active' : '' }`}
+                                    onClick={() => setEditForm(f => ({ ...f, cat }))}
                                 >
                                     { cat }
                                 </button>
