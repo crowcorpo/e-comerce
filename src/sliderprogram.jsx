@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from './superbase.ts';
 import { useAuth } from './authcontext.jsx';
+import blackbg from "./assets/bg2.avif";
 
 function Slider() {
 
@@ -132,116 +133,126 @@ function Slider() {
     }
 
     return (
+        <>
+            {/* ======= BG SECTION ======= */}
+            <div id="sl-section" style={{ '--sl-bg': `url(${blackbg})` }}>
 
-        <div id="slwrap">
+                <div id="slwrap">
 
-            {/* ======= SLIDER BOX ======= */}
-            <div
-                id="slbox"
-                onTouchStart={onTouchStart}
-                onTouchEnd={onTouchEnd}
-            >
+                    {/* ======= SLIDER BOX ======= */}
+                    <div
+                        id="slbox"
+                        onTouchStart={onTouchStart}
+                        onTouchEnd={onTouchEnd}
+                    >
 
-                { loading &&
-                    <div id="slloader">
-                        <div id="slspinner"/>
-                    </div>
-                }
-
-                { !loading && slides.length === 0 &&
-                    <div id="slempty">
-                        <p>no slides yet</p>
-                        { isAdmin && <span>upload your first image below</span> }
-                    </div>
-                }
-
-                { !loading && slides.length > 0 &&
-                    <>
-                        { slides.map((slide, i) => (
-                            <div
-                                id="slslide"
-                                key={slide.name}
-                                style={{
-                                    opacity: i === current ? 1 : 0,
-                                    zIndex: i === current ? 2 : 1,
-                                    pointerEvents: i === current ? "auto" : "none"
-                                }}
-                            >
-                                <img src={slide.url} alt="" />
-                                <div id="sloverlay"/>
+                        { loading &&
+                            <div id="slloader">
+                                <div id="slspinner"/>
                             </div>
-                        ))}
-
-                        { slides.length > 1 &&
-                            <>
-                                <button id="slarrow" className="slleft" onClick={prev}>
-                                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="15 18 9 12 15 6"/></svg>
-                                </button>
-                                <button id="slarrow" className="slright" onClick={next}>
-                                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="9 18 15 12 9 6"/></svg>
-                                </button>
-                            </>
                         }
 
-                        { slides.length > 1 &&
-                            <div id="sldots">
-                                { slides.map((_, i) => (
-                                    <button
-                                        key={i}
-                                        className={`sldot${i === current ? " slactive" : ""}`}
-                                        onClick={() => setcurrent(i)}
-                                    />
+                        { !loading && slides.length === 0 &&
+                            <div id="slempty">
+                                <p>no slides yet</p>
+                                { isAdmin && <span>upload your first image below</span> }
+                            </div>
+                        }
+
+                        { !loading && slides.length > 0 &&
+                            <>
+                                { slides.map((slide, i) => (
+                                    <div
+                                        id="slslide"
+                                        key={slide.name}
+                                        style={{
+                                            opacity: i === current ? 1 : 0,
+                                            zIndex: i === current ? 2 : 1,
+                                            pointerEvents: i === current ? "auto" : "none"
+                                        }}
+                                    >
+                                        <img src={slide.url} alt="" />
+                                        <div id="sloverlay"/>
+                                    </div>
                                 ))}
-                            </div>
-                        }
 
-                        <div id="slcounter">
-                            {String(current + 1).padStart(2, "0")} / {String(slides.length).padStart(2, "0")}
-                        </div>
+                                { slides.length > 1 &&
+                                    <>
+                                        <button id="slarrow" className="slleft" onClick={prev}>
+                                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="15 18 9 12 15 6"/></svg>
+                                        </button>
+                                        <button id="slarrow" className="slright" onClick={next}>
+                                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="9 18 15 12 9 6"/></svg>
+                                        </button>
+                                    </>
+                                }
 
-                    </>
-                }
+                                { slides.length > 1 &&
+                                    <div id="sldots">
+                                        { slides.map((_, i) => (
+                                            <button
+                                                key={i}
+                                                className={`sldot${i === current ? " slactive" : ""}`}
+                                                onClick={() => setcurrent(i)}
+                                            />
+                                        ))}
+                                    </div>
+                                }
 
-                {/* admin toolbar */}
-                { isAdmin &&
-                    <div id="sladminbar">
+                                <div id="slcounter">
+                                    {String(current + 1).padStart(2, "0")} / {String(slides.length).padStart(2, "0")}
+                                </div>
 
-                        <input id="slup-input" type="file" accept="image/*"
-                            onChange={(e) => upload(e.target.files[0])}
-                        />
-                        <button id="slupbtn" onClick={() => document.getElementById("slup-input").click()}>
-                            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
-                            <span>upload</span>
-                        </button>
-
-                        { slides.length > 0 &&
-                            <>
-                                <button id="sleditbtn"
-                                    onClick={() => {
-                                        settargetName(slides[current].name);
-                                        setshowEditModal(true);
-                                        document.body.style.overflow = "hidden";
-                                    }}>
-                                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
-                                    <span>edit</span>
-                                </button>
-
-                                <button id="sldelbtn"
-                                    onClick={() => {
-                                        settargetName(slides[current].name);
-                                        setshowDeleteConfirm(true);
-                                        document.body.style.overflow = "hidden";
-                                    }}>
-                                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>
-                                    <span>delete</span>
-                                </button>
                             </>
                         }
 
+                        {/* admin toolbar */}
+                        { isAdmin &&
+                            <div id="sladminbar">
+
+                                <input id="slup-input" type="file" accept="image/*"
+                                    onChange={(e) => upload(e.target.files[0])}
+                                />
+                                <button id="slupbtn" onClick={() => document.getElementById("slup-input").click()}>
+                                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                                    <span>upload</span>
+                                </button>
+
+                                { slides.length > 0 &&
+                                    <>
+                                        <button id="sleditbtn"
+                                            onClick={() => {
+                                                settargetName(slides[current].name);
+                                                setshowEditModal(true);
+                                                document.body.style.overflow = "hidden";
+                                            }}>
+                                            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                                            <span>edit</span>
+                                        </button>
+
+                                        <button id="sldelbtn"
+                                            onClick={() => {
+                                                settargetName(slides[current].name);
+                                                setshowDeleteConfirm(true);
+                                                document.body.style.overflow = "hidden";
+                                            }}>
+                                            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>
+                                            <span>delete</span>
+                                        </button>
+                                    </>
+                                }
+
+                            </div>
+                        }
+
                     </div>
-                }
+                    {/* end slbox */}
+
+                </div>
+                {/* end slwrap */}
 
             </div>
+            {/* end sl-section */}
 
             {/* ======= DELETE MODAL ======= */}
             { showDeleteConfirm &&
@@ -302,8 +313,7 @@ function Slider() {
                     </div>
                 </div>
             }
-
-        </div>
+        </>
     );
 }
 

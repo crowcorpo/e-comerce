@@ -14,6 +14,16 @@
     --font-body        : 'DM Sans', sans-serif;
 }
 
+#img7awifather::before {
+    content   : '';
+    position  : fixed;
+    inset     : 0;
+    background: linear-gradient(135deg, rgb(0, 194, 162), rgb(110, 110, 110), rgb(0, 0, 59), rgb(0, 194, 162));
+    filter    : blur( 60px );
+    transform : scale( 1.1 );
+    z-index   : -1;
+}
+
 /* ===================== */
 /* GALLERY WRAPPER       */
 /* ===================== */
