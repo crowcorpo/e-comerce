@@ -171,7 +171,7 @@ function Test2({ onProductClick }) {
             <div id="img7awifather">
                 <div id="img7awi">
                     { products.map((product) => (
-                        <div className="product-card" key={product.id}>
+                        <div className={`product-card ${product.isNew ? 'card-new' : ''}`}>
                             <div
                                 className="product-img-wrap"
                                 onClick={() => onProductClick(product.id)}

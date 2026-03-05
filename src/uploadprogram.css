@@ -41,19 +41,13 @@
     border        : 1px solid var( --gallery-border );
     background    : var( --gallery-surface );
     box-shadow    : 0 8px 32px rgba( 0, 0, 0, 0.4 );
-    transition    : transform 0.4s ease, box-shadow 0.4s ease, border-color 0.4s ease;
-    animation     : fadeUp 0.5s ease both;
+    /* ✅ only transition transform and border — NOT box-shadow */
+    transition    : transform 0.4s ease, border-color 0.4s ease;
 }
 
 #imgcont:hover {
     transform    : translateY( -6px );
-    box-shadow   : 0 20px 50px rgba( 0, 0, 0, 0.6 );
     border-color : rgba( 200, 169, 110, 0.3 );
-}
-
-@keyframes fadeUp {
-    from { opacity: 0; transform: translateY( 24px ); }
-    to   { opacity: 1; transform: translateY( 0 );    }
 }
 
 #imgcont img {
@@ -83,43 +77,40 @@
 }
 
 #edit, #delete {
-    flex                    : 1;
-    display                 : flex;
-    align-items             : center;
-    justify-content         : center;
-    gap                     : 5px;
-    font-family             : var( --font-body );
-    font-weight             : 600;
-    font-size               : 0.75rem;
-    letter-spacing          : 0.1em;
-    text-transform          : uppercase;
-    padding                 : 9px 12px;
-    border                  : none;
-    border-radius           : 50px;
-    cursor                  : pointer;
-    transition              : all 0.25s ease;
-    backdrop-filter         : blur( 10px );
-    -webkit-backdrop-filter : blur( 10px );
+    flex           : 1;
+    display        : flex;
+    align-items    : center;
+    justify-content: center;
+    gap            : 5px;
+    font-family    : var( --font-body );
+    font-weight    : 600;
+    font-size      : 0.75rem;
+    letter-spacing : 0.1em;
+    text-transform : uppercase;
+    padding        : 9px 12px;
+    border         : none;
+    border-radius  : 50px;
+    cursor         : pointer;
+    /* ✅ removed backdrop-filter: blur — was the biggest slowdown */
+    transition     : transform 0.2s ease, background 0.2s ease;
+    will-change    : transform;
 }
 
-#edit   { background: #000000; color: #ffffff; }
-#delete { background: #ff0000; color: #ffffff; }
+#edit   { background: rgba( 0, 0, 0, 0.75 );   color: #ffffff; }
+#delete { background: rgba( 200, 0, 0, 0.75 );  color: #ffffff; }
 
 #edit:hover {
-    background : #494949;
+    background : rgba( 73, 73, 73, 0.9 );
     transform  : translateY( -2px );
-    box-shadow : 0 6px 18px rgba( 200, 169, 110, 0.45 );
 }
 
 #delete:hover {
-    background : #fa9090;
+    background : rgba( 250, 144, 144, 0.9 );
     transform  : translateY( -2px );
-    box-shadow : 0 6px 18px rgba( 224, 92, 92, 0.45 );
 }
 
 #edit:active, #delete:active {
-    transform  : translateY( 0 );
-    box-shadow : none;
+    transform : translateY( 0 );
 }
 
 /* ===================== */
@@ -133,6 +124,7 @@
     align-items             : center;
     justify-content         : center;
     background              : rgba( 0, 0, 0, 0.7 );
+    /* ✅ backdrop-filter is fine here — it's only ONE element, not repeated */
     backdrop-filter         : blur( 12px );
     -webkit-backdrop-filter : blur( 12px );
     padding                 : 20px;
@@ -195,8 +187,9 @@
     border          : none;
     border-radius   : 50px;
     cursor          : pointer;
-    transition      : all 0.25s ease;
+    transition      : transform 0.2s ease, background 0.2s ease, border-color 0.2s ease;
     margin          : 0 6px;
+    will-change     : transform;
 }
 
 #koko:first-of-type {
@@ -219,7 +212,6 @@
 #koko:last-of-type:hover {
     background : var( --gallery-danger-h );
     transform  : translateY( -2px );
-    box-shadow : 0 8px 20px rgba( 224, 92, 92, 0.4 );
 }
 
 #koko:active { transform: translateY( 0 ) !important; }
@@ -240,7 +232,7 @@
     border          : 1px solid var( --gallery-glass-b );
     border-radius   : 50px;
     cursor          : pointer;
-    transition      : all 0.3s ease;
+    transition      : transform 0.2s ease, background 0.2s ease, border-color 0.2s ease;
 }
 
 #custom-upload-btn:hover {
@@ -305,14 +297,26 @@
     background     : var( --gallery-surface );
     box-shadow     : 0 8px 32px rgba( 0, 0, 0, 0.4 );
     overflow       : hidden;
-    transition     : transform 0.4s ease, box-shadow 0.4s ease, border-color 0.4s ease;
-    animation      : fadeUp 0.5s ease both;
+    /* ✅ removed box-shadow from transition — too expensive on many cards */
+    transition     : transform 0.4s ease, border-color 0.4s ease;
+    will-change    : transform;
+    /* ✅ no global animation here — only new cards animate (via .card-new class) */
 }
 
 .product-card:hover {
     transform    : translateY( -6px );
-    box-shadow   : 0 20px 50px rgba( 0, 0, 0, 0.6 );
     border-color : rgba( 200, 169, 110, 0.3 );
+}
+
+/* ✅ SMART ANIMATION — only plays on newly added cards */
+/* Add className="product-card card-new" in JSX when inserting a new product */
+.card-new {
+    animation : fadeUp 0.5s ease both;
+}
+
+@keyframes fadeUp {
+    from { opacity: 0; transform: translateY( 24px ); }
+    to   { opacity: 1; transform: translateY( 0 );    }
 }
 
 .product-img-wrap {
@@ -320,7 +324,6 @@
     overflow : hidden;
 }
 
-/* ── THE KEY FIX ── */
 .product-img-wrap img {
     display      : block;
     width        : 100%;
@@ -543,7 +546,7 @@
     border-radius   : 10px;
     color           : rgba(255,255,255,0.5);
     cursor          : pointer;
-    transition      : all 0.2s;
+    transition      : background 0.2s, color 0.2s, border-color 0.2s;
     text-align      : center;
     display         : flex;
     align-items     : center;
