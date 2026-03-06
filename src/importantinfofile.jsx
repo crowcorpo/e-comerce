@@ -22,7 +22,7 @@ function App() {
 
     return (
         <AuthProvider>
-            <Navbar/>
+            <Navbar hideLinks={ !!selectedProduct }/>
 
             { selectedProduct
                 ? <ShopPage2
